@@ -1,0 +1,172 @@
+\section{Weitere Analyse von Filter 1 und 2}
+
+\subsection{Sprungantwort}
+
+\begin{sagesilent}
+    bode_F1_step = bode_F1.plot_data_step()
+    bode_F2_step = bode_F2_C1.plot_data_step()
+    
+    bode_F12_plot_step = list_plot(
+        bode_F1_step,
+        axes_labels=["Zeit in s", "Amplitude"],
+        legend_label="RL-Filter",
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='green'
+    )
+
+    bode_F12_plot_step += list_plot(
+        bode_F2_step,
+        legend_label="RLC-Filter",
+        plotjoined=True,
+        color='blue'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \sageplot{bode_F12_plot_step}
+    \caption{Sprungantwort des RL- und RLC-Hochpasses.}
+    \label{fig:F12_Step}
+\end{figure}
+
+Die Sprungantwort beschreibt, wie sich das Ausgangssignal ändert, wenn ein plötzlicher Sprung im Eingangssignal auftritt.
+Dieser Sprung kann zum Beispiel durch einen schnellen Übergang von einem niedrigen auf eine hohes Eingangssignal verursacht werden.
+
+\subsection{Gruppenlaufzeit}
+
+Die Gruppenlaufzeit kann aus dem Verlauf der Phase berechnet werden. Sie ist die negative Ableitung des Phasenverlaufs nach der Kreisfrequenz. Für die Gruppenlaufzeit $G$ ergibt sich also:
+
+\begin{equation*}
+    G = \frac{d \varphi}{d w}
+\end{equation*}
+
+Um eine Ableitung berechnen zu können muss der allgemeine Phasengang $\varphi$ vorliegen. Es folgt dann die Ableitung nach $w$:
+
+\vspace{1em}
+
+\begin{sagesilent}
+    # Group-Delay LaTeX Formular:
+    # var('w R L C')
+    # phi = arctan(-(R/(w*L)))
+    # phi = arctan((1-(1/(w^2*L*C)))/(R/(w*L)))
+    # latex(derivative(phi, w).full_simplify())
+
+    w_f50 = 2*pi*50
+    bode_F1_G_f50 = bode_F1.get_group_delay(w_f50)
+    bode_F2_G_f50 = bode_F2.get_group_delay(w_f50)
+\end{sagesilent}
+
+\textbf{RL-Filter:}
+
+\begin{align*}
+    \varphi &= arctan(-\frac{R}{wL}) \\
+    G &= \frac{R l}{l^{2} w^{2} + R^{2}} \\
+    G &= \SIvar{bode_F1_G_f50 * 10^3, 3}{\milli\second} \tag*{bei $f=\qty{50}{\hertz}$}
+\end{align*}
+
+\textbf{RLC-Filter:}
+
+\begin{align*}
+    \varphi &= arctan(\frac{1 - \frac{1}{w^2LC}}{\frac{R}{wL}}) \\
+    G &= \frac{C^{2} L R w^{2} + C R}{C^{2} L^{2} w^{4} + {\left(C^{2} R^{2} - 2 \, C L\right)} w^{2} + 1} \\
+    G &= \SIvar{bode_F2_G_f50 * 10^3, 3}{\milli\second} \tag*{bei $f=\qty{50}{\hertz}$}
+\end{align*}
+
+\vspace{1em}
+
+\begin{sagesilent}
+    bode_F1_G = bode_F1.plot_data_freq_gd(f_stop=250)
+    bode_F2_G = bode_F2.plot_data_freq_gd(f_stop=250)
+
+    bode_F12_plot_G = list_plot(
+        bode_F1_G,
+        axes_labels=["Frequenz in Hz", "Zeit in s"],
+        legend_label="RL-Filter",
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='green'
+    )
+
+    bode_F12_plot_G += list_plot(
+        bode_F2_G,
+        legend_label="RLC-Filter",
+        plotjoined=True,
+        color='blue'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \sageplot{bode_F12_plot_G}
+    \caption{Gruppenlaufzeit des RL- und RLC-Hochpasses.}
+    \label{fig:F12_G}
+\end{figure}
+
+Die Gruppenlaufzeit ist die Verzögerung eines Signals, beim Durchgang durch einen Filter.
+Sie beschreibt, wie lange eine Signalwelle durch einen Filter benötigt.
+
+\subsection{Simulation mit Belastung $R_L=100\Omega$}
+
+\begin{sagesilent}
+    bode_F12_sim_data = LTSpice.plot_data_polar("src/simulations/export/03 RL- RLC-Filter Belastung.txt")
+
+    bode_F12_sim_data_F1_mag, bode_F12_sim_data_F1_pha = bode_F12_sim_data["V(rl_out)"]
+    bode_F12_sim_data_F2_mag, bode_F12_sim_data_F2_pha = bode_F12_sim_data["V(rlc_out)"]
+
+    bode_F12_sim_plot_mag = list_plot(
+        bode_F12_sim_data_F1_mag,
+        axes_labels=["Frequenz in Hz", "Betrag in dB"],
+        legend_label="RL-Filter",
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+
+    bode_F12_sim_plot_mag += list_plot(
+        bode_F12_sim_data_F2_mag,
+        legend_label="RLC-Filter",
+        plotjoined=True,
+        color='darkslateblue'
+    )
+
+    bode_F12_sim_plot_pha = list_plot(
+        bode_F12_sim_data_F1_pha,
+        axes_labels=["Frequenz in Hz", "Phase in $\degree$"],
+        legend_label="RL-Filter",
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+
+    bode_F12_sim_plot_pha += list_plot(
+        bode_F12_sim_data_F2_pha,
+        legend_label="RLC-Filter",
+        plotjoined=True,
+        color='darkslateblue'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F12_sim_plot_mag}
+    \end{subfigure}
+    \quad
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F12_sim_plot_pha}
+    \end{subfigure}
+    \caption{Amplituden- und Phasengang der Simulation des RL- und RLC-Hochpasses unter Belastung}
+    \label{fig:F12_Sim}
+\end{figure}
+
+Eine ohmsche Belastung beeinflusst die Koeffizienten, welche für die Berechnung der Übertragungsfunktion verwendet werden.
+Dies führt dazu, dass die Grenzfrequenz des Filters sowie dessen Amplituden-Frequenzgang verändert werden.  

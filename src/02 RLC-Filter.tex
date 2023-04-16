@@ -1,0 +1,266 @@
+\section{Entwurf eines RLC-Filter zweiter Ordnung}
+
+Tiefere Frequenzen sollen stärker abgeschwächt werden \textit{($\num{-40}\,\nicefrac{\unit{dB}}{\text{Dekade}}$)}.
+Jedoch darf, zusätzlich zu den bereits verwendeten Bauelementen, nur eine Kapazität verwendet werden.
+
+\begin{figure}[H]
+    \centering
+    \begin{circuitikz}
+        \coordinate (in+) at (0,0);
+        \coordinate (in-) at (0,-2);
+
+        \draw
+        (in+) to[R=$R$, a=$\SIvar{R}{\ohm}$, o-] ++(2,0)
+        to[C=$C$] ++(2,0) coordinate (aux1)
+        to[short,-o] ++(2,0) coordinate (out+)
+
+        (aux1) to[cute inductor=$L$,*-*] (aux1 |- in-)
+
+        (in-) to[short,o-o] (in- -| out+) coordinate (out-)
+
+        (in+) to[open,name=inV,v] (in-)
+        (out+) to[open,name=outV,v^] (out-)
+        ;
+
+        \voltage{inV}{$U_e$}
+        \voltage{outV}{$U_a$}
+    \end{circuitikz}
+\end{figure}
+
+\begin{equation*}
+    F_{(jw)}
+    = \frac{\underline{U_{a}}}{\underline{U_{e}}}
+    = \frac{jwL}{jwL+R+\frac{1}{jwC}} \cdot \frac{\frac{1}{jwL}}{\frac{1}{jwL}}
+    = \frac{1}{1+\frac{\frac{1}{jwC}}{jwL}+\frac{R}{jwL}}
+    = \frac{1}{\underbrace{1-\frac{1}{w^2LC}}_{Re} + \underbrace{\frac{R}{jwL}}_{Im}}
+\end{equation*}
+
+\subsection{Betrag und Phase aus der Übertragungsfunktion}
+
+\begin{align*}
+    Re &= 1 - \frac{1}{w^2LC} \\
+    Im &= \frac{R}{jwL}
+\end{align*}
+
+\begin{align*}
+    |G_{jw}| & = \frac{1}{\sqrt{(1 - \frac{1}{w^2LC})^2 + (\frac{R}{wL})^2}} &
+    \varphi &= arctan(\frac{1 - \frac{1}{w^2LC}}{\frac{R}{wL}})
+\end{align*}
+
+\subsection{Berechnung der Bauteile}
+
+\begin{sagesilent}
+    L = R/(2*pi*f_g)
+    C = var('C')
+
+    X_L = 2*pi*f_g*L
+    X_C = 1/(2*pi*f_g*C)
+
+    C = solve([X_L == X_C], C)[0].rhs()
+\end{sagesilent}
+
+\begin{align*}
+    f_{g} &= \frac{R}{2 \pi L} \\
+    \Rightarrow L &= \frac{R}{2 \pi f_{g}} \\
+    L &= \frac{\var{R}}{2 \pi \var{f_g}} \\
+    L &= \SIvar{L, 3}{\henry}
+\end{align*}
+
+\begin{align*}
+    X_{L} &= 2 \pi f_{g} L \\
+    X_{C} &= \frac{1}{2 \pi f_{g} C} \\
+    X_{L} &= X_{C} \\
+    \Rightarrow C &= \SIvar{C*10^6, 1}{\micro\farad}
+\end{align*}
+
+\subsection{Übertragungsfunktion}
+
+\begin{sagesilent}
+    bode_F2 = TransferFunction((s*L)/(s*L+R+1/(s*C)), 1, 10000, 1)
+    bode_F2_freq_mag = bode_F2.plot_data_freq_mag_bode()
+    bode_F2_freq_pha = bode_F2.plot_data_freq_pha_bode()
+
+    bode_F2_plot_mag = list_plot(
+        bode_F2_freq_mag,
+        axes_labels=["Frequenz in Hz", "Betrag in dB"],
+        legend_label="RLC-Filter",
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='red'
+    )
+
+    bode_F2_plot_mag += list_plot(
+        bode_F1_freq_mag,
+        legend_label="RL-Filter",
+        plotjoined=True,
+        linestyle=':',
+        color='blue'
+    )
+
+    bode_F2_plot_pha = list_plot(
+        bode_F2_freq_pha,
+        axes_labels=["Frequenz in Hz", "Phase in $\degree$"],
+        legend_label="RLC-Filter",
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='red'
+    )
+
+    bode_F2_plot_pha += list_plot(
+        bode_F1_freq_pha,
+        legend_label="RL-Filter",
+        plotjoined=True,
+        linestyle=':',
+        color='blue'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F2_plot_mag}
+    \end{subfigure}
+    \quad
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F2_plot_pha}
+    \end{subfigure}
+    \caption{Amplituden- und Phasengang des RLC-Hochpasses und Vergleich mit dem RL-Hochpass (Abb. \ref{fig:F1}) der vorherigen Übung.}
+    \label{fig:F2}
+\end{figure}
+
+\subsection{Übertragungsfunktion mit $C_1=0.1mF$ und $C_2=0.01mF$}
+
+\begin{sagesilent}
+    C_1 = 0.1*10^-3
+    bode_F2_C1 = TransferFunction((s*L)/(s*L+R+1/(s*C_1)), 1, 10000, 1)
+    bode_F2_C1_freq_mag = bode_F2_C1.plot_data_freq_mag_bode()
+    bode_F2_C1_freq_pha = bode_F2_C1.plot_data_freq_pha_bode()
+
+    C_2 = 0.01*10^-3
+    bode_F2_C2 = TransferFunction((s*L)/(s*L+R+1/(s*C_2)), 1, 10000, 1)
+    bode_F2_C2_freq_mag = bode_F2_C2.plot_data_freq_mag_bode()
+    bode_F2_C2_freq_pha = bode_F2_C2.plot_data_freq_pha_bode()
+    
+    bode_F2_C12_plot_mag = list_plot(
+        bode_F2_C1_freq_mag,
+        axes_labels=["Frequenz in Hz", "Betrag in dB"],
+        legend_label="$C_1$",
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='green'
+    )
+
+    bode_F2_C12_plot_mag += list_plot(
+        bode_F2_C2_freq_mag,
+        legend_label='$C_2$',
+        plotjoined=True,
+        color='purple'
+    )
+
+    bode_F2_C12_plot_pha = list_plot(
+        bode_F2_C1_freq_pha,
+        axes_labels=["Frequenz in Hz", "Phase in $\degree$"],
+        legend_label="$C_1$",
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='green'
+    )
+
+    bode_F2_C12_plot_pha += list_plot(
+        bode_F2_C2_freq_pha,
+        legend_label="$C_2$",
+        plotjoined=True,
+        color='purple'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F2_C12_plot_mag}
+    \end{subfigure}
+    \quad
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F2_C12_plot_pha}
+    \end{subfigure}
+    \caption{Amplituden- und Phasengang des RLC-Hochpasses.}
+    \label{fig:F2_C12}
+\end{figure}
+
+\subsection{Analyse}
+
+Die Kapazität $C$ hat einen direkten Einfluss auf die Übertragungsbandbreite des RLC-Hochpassfilters und bestimmt in gewisser Weise, wie gut der Filter bestimmte Frequenzen durchlässt oder abfiltert.
+Bei größeren Kapazitäten, lässt der der Hochpassfilter eine größere Bandbreite an höheren Frequenzen durch.
+
+Bei der Kapazität $C_2$ (\SIvar{C_1*10^3, 1}{\milli\farad}) stimmt die Grenzfrequenz $f_g$ von \SIvar{f_g}{\hertz} nicht mehr überein und ist daher nicht geeignet, deshalb wird für weitere Analysen die Kapazität $C_2$ (\SIvar{C_2*10^3, 2}{\milli\farad}) verwendet.
+
+\begin{sagesilent}
+    bode_F2_mag_1 = bode_F2_C1_freq_mag[0][1]
+    bode_F2_mag_10 = bode_F2_C1_freq_mag[9][1]
+
+    attenuation_dB_F2 = bode_F2_mag_10 - bode_F2_mag_1
+    attenuation_dB_F2 = attenuation_dB_F2
+\end{sagesilent}
+
+Die Abschwächung im Frequenzbereich von \qty{1}{\hertz} bis \qty{10}{\hertz} beträgt somit $\var{attenuation_dB_F2, 0}\,\nicefrac{\unit{dB}}{\text{Dekade}}$.
+
+\begin{sagesilent}
+    bode_F2_mag_fg = bode_F2_C1_freq_mag[f_g-1][1]
+    bode_F2_pha_fg = bode_F2_C1_freq_pha[f_g-1][1]
+\end{sagesilent}
+
+Bei der Grenzfrequenz von \SIvar{f_g}{\hertz} ergibt sich dabei eine Verstärkung von \SIvar{bode_F2_mag_fg, 2}{\decibel} und eine Phasenverschiebung von \SIvar{bode_F2_pha_fg, 0}{\degree}
+
+\subsection{Simulation}
+
+\begin{sagesilent}
+    bode_F2_sim_data = LTSpice.plot_data_polar("src/simulations/export/02 RLC-Filter.txt")
+    bode_F2_sim_data_mag, bode_F1_sim_data_pha = bode_F2_sim_data["V(out)"]
+
+    bode_F2_sim_plot_mag = list_plot(
+        bode_F2_sim_data_mag,
+        axes_labels=["Frequenz in Hz", "Betrag in dB"],
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+
+    bode_F2_sim_plot_pha = list_plot(
+        bode_F1_sim_data_pha,
+        axes_labels=["Frequenz in Hz", "Phase in $\degree$"],
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F2_sim_plot_mag}
+    \end{subfigure}
+    \quad
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F2_sim_plot_pha}
+    \end{subfigure}
+    \caption{Amplituden- und Phasengang der Simulation des RLC-Hochpasses}
+    \label{fig:F2_Sim}
+\end{figure}

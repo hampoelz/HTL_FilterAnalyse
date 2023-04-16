@@ -1,0 +1,342 @@
+\section{Entwurf eines aktiven RLC-Filter zweiter Ordnung}
+
+Im Zusammenhang mit den ermittelten Bauteilen vom RLC-Filter, soll ein aktiver Filter mit einem Operationsverstärker OP747 entworfen werden.
+Der OPV soll als Spannungsfolger im Dual-Supply Mode eingesetzt werden.
+
+\begin{figure}[H]
+    \centering
+    \begin{circuitikz}
+        \coordinate (in+) at (0,0);
+        \coordinate (in-) at (0,-3);
+
+        \draw
+        (in+) to[R=$R$, a=$\SIvar{R}{\ohm}$, o-] ++(2,0)
+        to[C=$C$, a=$\SIvar{C_1*10^3, 1}{\milli\farad}$] ++(2,0) coordinate (aux1)
+        -- ++(2,0) node[op amp,anchor=-](OPV){OPV}
+
+        (OPV.out) to[short, -o] ++(1,0) coordinate (out+)
+
+        (OPV.+) -- ++(0, -1) coordinate(opv-aux1)
+        -- (opv-aux1 -| OPV.out) to[short,-*] (OPV.out)
+        
+        (aux1) to[cute inductor=$L$, a=$\SIvar{L, 3}{\henry}$, *-*] (aux1 |- in-)
+
+        (in-) to[short,o-o] (in- -| out+) coordinate (out-)
+
+        (in+) to[open,name=inV,v] (in-)
+        (out+) to[open,name=outV,v^] (out-)
+        ;
+
+        \voltage{inV}{$U_e$}
+        \voltage{outV}{$U_a$}
+    \end{circuitikz}
+\end{figure}
+
+\begin{equation*}
+    F_{(jw)}
+    = \frac{\underline{U_{a}}}{\underline{U_{e}}}
+    = \frac{jwL}{jwL+R+\frac{1}{jwC}} \cdot \frac{\frac{1}{jwL}}{\frac{1}{jwL}}
+    = \frac{1}{1+\frac{\frac{1}{jwC}}{jwL}+\frac{R}{jwL}}
+    = \frac{1}{\underbrace{1-\frac{1}{w^2LC}}_{Re} + \underbrace{\frac{R}{jwL}}_{Im}}
+\end{equation*}
+
+\subsection{Betrag und Phase aus der Übertragungsfunktion}
+
+\begin{align*}
+    Re &= 1 - \frac{1}{w^2LC} \\
+    Im &= \frac{R}{jwL}
+\end{align*}
+
+\begin{align*}
+    |G_{jw}| & = \frac{1}{\sqrt{(1 - \frac{1}{w^2LC})^2 + (\frac{R}{wL})^2}} &
+    \varphi &= arctan(\frac{1 - \frac{1}{w^2LC}}{\frac{R}{wL}})
+\end{align*}
+
+\subsection{Simulation}
+
+\begin{sagesilent}
+    bode_F3_sim1_data = LTSpice.plot_data_polar("src/simulations/export/04_1 Aktiver RLC-Filter.txt")
+    bode_F3_sim1_data_mag, bode_F3_sim1_data_pha = bode_F3_sim1_data["V(out)"]
+
+    bode_F3_sim1_plot_mag = list_plot(
+        bode_F3_sim1_data_mag,
+        axes_labels=["Frequenz in Hz", "Betrag in dB"],
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+
+    bode_F3_sim1_plot_pha = list_plot(
+        bode_F3_sim1_data_pha,
+        axes_labels=["Frequenz in Hz", "Phase in $\degree$"],
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F3_sim1_plot_mag}
+    \end{subfigure}
+    \quad
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F3_sim1_plot_pha}
+    \end{subfigure}
+    \caption{Amplituden- und Phasengang der Simulation des aktiven RLC-Filters}
+    \label{fig:F3_Sim1}
+\end{figure}
+
+\subsection{Analyse}
+
+Bei der Wahl des OPV muss auf das Gain-Bandwidth-Product (GBW) geachtet werden.
+Es stellt eine obere Grenze für die maximale Frequenz dar, bei der der OPV noch eine annehmbare Verstärkung liefern kann.
+Deshalb muss das GBW höher, als die höchste Frequenz sein, die im Filter verarbeitet werden.
+
+Des weiteren sollten natürlich auch andere Faktoren wie die Verstärkungsstabilität, Rauschspannungen und -ströme sowie die Eingangsimpedanz berücksichtigt werden, um das beste Ergebnis zu erzielen.
+
+\subsection{Gegenkopplung mit Spannungsteiler}
+
+\begin{sagesilent}
+    R_1 = 300
+    R_2 = 600
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \begin{circuitikz}
+        \coordinate (in+) at (0,0);
+        \coordinate (in-) at (0,-4);
+
+        \draw
+        (in+) to[R=$R$, a=$\SIvar{R}{\ohm}$, o-] ++(2,0)
+        to[C=$C$, a=$\SIvar{C_1*10^3, 1}{\milli\farad}$] ++(2,0) coordinate (aux1)
+        -- ++(2,0) node[op amp,anchor=-](OPV){OPV}
+
+        (OPV.out) to[short, -o] ++(1,0) coordinate (out+)
+
+        (OPV.+) -- ++(0, -1) coordinate(opv-aux1)
+        to[R=$R2$, a=$\SIvar{R_2}{\ohm}$] (opv-aux1 -| OPV.out) to[short,-*] (OPV.out)
+
+        (opv-aux1) to[R=$R1$, a=$\SIvar{R_1}{\ohm}$,*-*] (opv-aux1 |- in-)
+        (aux1) to[cute inductor=$L$, a=$\SIvar{L, 3}{\henry}$, *-*] (aux1 |- in-)
+
+        (in-) to[short,o-o] (in- -| out+) coordinate (out-)
+
+        (in+) to[open,name=inV,v] (in-)
+        (out+) to[open,name=outV,v^] (out-)
+        ;
+
+        \voltage{inV}{$U_e$}
+        \voltage{outV}{$U_a$}
+    \end{circuitikz}
+\end{figure}
+
+\begin{equation*}
+    F_{(jw)}
+    = \frac{\underline{U_{a}}}{\underline{U_{e}}}
+    = \frac{jwL}{jwL+R+\frac{1}{jwC}} \cdot (1+\frac{R_1}{R_2})
+\end{equation*}
+
+\begin{sagesilent}
+    bode_F3 = TransferFunction((s*L)/(s*L+R+(1/(s*C_1)))*(1+(R_1/R_2)), 1, 10000, 1)
+\end{sagesilent}
+
+\subsubsection{Simulation}
+
+\begin{sagesilent}
+    bode_F3_sim2_data = LTSpice.plot_data_polar("src/simulations/export/04_2 Aktiver RLC-Filter Gegenkopplung.txt")
+    bode_F3_sim2_data_mag, bode_F3_sim2_data_pha = bode_F3_sim2_data["V(out)"]
+
+    bode_F3_sim2_plot_mag = list_plot(
+        bode_F3_sim2_data_mag,
+        axes_labels=["Frequenz in Hz", "Betrag in dB"],
+        legend_label="mit Spannungsteiler $\it{(R/2R)}$",
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+
+    bode_F3_sim2_plot_mag += list_plot(
+        bode_F3_sim1_data_mag,
+        legend_label="ohne Spannungsteiler",
+        plotjoined=True,
+        linestyle=':',
+        color='darkslateblue'
+    )
+
+    bode_F3_sim2_plot_pha = list_plot(
+        bode_F3_sim2_data_pha,
+        axes_labels=["Frequenz in Hz", "Phase in $\degree$"],
+        legend_label="mit Spannungsteiler $\it{(R/2R)}$",
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+
+    bode_F3_sim2_plot_pha += list_plot(
+        bode_F3_sim1_data_pha,
+        legend_label="ohne Spannungsteiler",
+        plotjoined=True,
+        linestyle=':',
+        color='darkslateblue'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F3_sim2_plot_mag}
+    \end{subfigure}
+    \quad
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F3_sim2_plot_pha}
+    \end{subfigure}
+    \caption{Amplituden- und Phasengang der Simulation des aktiven RLC-Filters mit einer $R/2R$ Spannunsteiler-Gegenkopplung}
+    \label{fig:F3_Sim2}
+\end{figure}
+
+\subsubsection{Analyse}
+
+Die zusätzliche Gegenkopplung bietet die Möglichkeit, Signale im Filter zu Verstärken sowie zu kontrollieren und regulieren.
+Des weitere kann der Frequenzgang optimiert werden. 
+
+Jedoch könnte eine zu starke Gegenkopplung zu einer Verzerrung des Signals führen.
+Die zusätzlichen Bauteile könnten jedoch auch Phasenverschiebungen verursachen.
+
+\subsection{Weitere Analyse}
+
+\subsubsection{Sprungantwort}
+
+\begin{sagesilent}
+    bode_F3_step = bode_F3.plot_data_step()
+    
+    bode_F3_plot_step = list_plot(
+        bode_F3_step,
+        axes_labels=["Zeit in s", "Amplitude"],
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='red'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \sageplot{bode_F3_plot_step}
+    \caption{Sprungantwort des aktiven RLC-Filters mit einer $R/2R$ Spannunsteiler-Gegenkopplung.}
+    \label{fig:F3_Step}
+\end{figure}
+
+\subsubsection{Gruppenlaufzeit}
+
+\begin{sagesilent}
+    # Group-Delay LaTeX Formular:
+    # var('w R R_1 R_2 L C')
+    # s = I*w
+    # F3_F = (s*L)/(s*L+R+(1/(s*C)))*(1+(R_1/R_2))
+    # F3_phi = arctan( (F3_F.real()) / (F3_F.imag()) ) 
+    # derivative(F3_phi, w).full_simplify()
+    
+    w_f200 = 2*pi*200
+    bode_F3_G_f200 = bode_F3.get_group_delay(w_f200)
+\end{sagesilent}
+
+\begin{align*}
+    \varphi &= \arctan\left(\frac{C L w^{2} - 1}{C R w}\right) \\
+    G &= \frac{C^{2} L R w^{2} + C R}{C^{2} L^{2} w^{4} + {\left(C^{2} R^{2} - 2 \, C L\right)} w^{2} + 1} \\
+    G &= \SIvar{bode_F3_G_f200 * 10^3, 3}{\milli\second} \tag*{bei $f=\qty{200}{\hertz}$}
+\end{align*}
+
+\begin{sagesilent}
+    bode_F3_G = bode_F3.plot_data_freq_gd(f_stop=250)
+
+    bode_F3_plot_G = list_plot(
+        bode_F3_G,
+        axes_labels=["Frequenz in Hz", "Zeit in s"],
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='red'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \sageplot{bode_F3_plot_G}
+    \caption{Gruppenlaufzeit des aktiven RLC-Filters mit einer $R/2R$ Spannunsteiler-Gegenkopplung.}
+    \label{fig:F3_G}
+\end{figure}
+
+\subsubsection{Simulation mit Belastung $R_L=100\Omega$}
+
+\begin{sagesilent}
+    bode_F3_sim3_data = LTSpice.plot_data_polar("src/simulations/export/04_3 Aktiver RLC-Filter Gegenkopplung Belastung.txt")
+    bode_F3_sim3_data_mag, bode_F3_sim3_data_pha = bode_F3_sim3_data["V(out)"]
+
+    bode_F3_sim3_plot_mag = list_plot(
+        bode_F3_sim3_data_mag,
+        axes_labels=["Frequenz in Hz", "Betrag in dB"],
+        legend_label="mit $R_L=100\Omega$",
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+
+    bode_F3_sim3_plot_mag += list_plot(
+        bode_F3_sim2_data_mag,
+        legend_label="ohne Belastung",
+        plotjoined=True,
+        linestyle=':',
+        color='darkslateblue'
+    )
+
+    bode_F3_sim3_plot_pha = list_plot(
+        bode_F3_sim3_data_pha,
+        axes_labels=["Frequenz in Hz", "Phase in $\degree$"],
+        legend_label="mit $R_L=100\Omega$",
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+
+    bode_F3_sim3_plot_pha += list_plot(
+        bode_F3_sim2_data_pha,
+        legend_label="ohne Belastung",
+        plotjoined=True,
+        linestyle=':',
+        color='darkslateblue'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F3_sim3_plot_mag}
+    \end{subfigure}
+    \quad
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F3_sim3_plot_pha}
+    \end{subfigure}
+    \caption{Amplituden- und Phasengang der Simulation des aktiven RLC-Filters mit einer $R/2R$ Spannunsteiler-Gegenkopplung unter Belastung}
+    \label{fig:F3_Sim3}
+\end{figure}

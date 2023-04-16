@@ -1,0 +1,167 @@
+\section{Entwurf eines RL-Filter erster Ordnung}
+
+\begin{figure}[H]
+    \centering
+    \begin{circuitikz}
+        \coordinate (in+) at (0,0);
+        \coordinate (in-) at (0,-2);
+
+        \draw
+        (in+) to[R=$R$, a=$\SIvar{R}{\ohm}$, o-] ++(4,0) coordinate (aux1)
+        to[short,-o] ++(2,0) coordinate (out+)
+
+        (aux1) to[cute inductor=$L$,*-*] (aux1 |- in-)
+
+        (in-) to[short,o-o] (in- -| out+) coordinate (out-)
+
+        (in+) to[open,name=inV,v] (in-)
+        (out+) to[open,name=outV,v^] (out-)
+        ;
+
+        \voltage{inV}{$U_e$}
+        \voltage{outV}{$U_a$}
+    \end{circuitikz}
+\end{figure}
+
+\begin{equation*}
+    F_{(jw)}
+    = \frac{\underline{U_{a}}}{\underline{U_{e}}}
+    = \frac{jwL}{jwL+R} \cdot \frac{\frac{1}{jwL}}{\frac{1}{jwL}}
+    = \frac{1}{1+\frac{R}{jwL}} = \frac{1}{\underbrace{1}_{Re} - \underbrace{j \cdot \frac{R}{wL}}}_{Im}
+\end{equation*}
+
+\subsection{Betrag und Phase aus der Übertragungsfunktion}
+
+\begin{align*}
+    Re &= 1 \\
+    Im &= -j \cdot \frac{R}{wL}
+\end{align*}
+
+\begin{align*}
+    |G_{jw}| & = \frac{1}{\sqrt{1^2 + (\frac{R}{wL})^2}} &
+    \varphi &= arctan(-\frac{R}{wL})
+\end{align*}
+
+\subsection{Ermittlung der Asymptoten des Bodediagramms}
+
+\begin{equation*}
+    w = \infty \Rightarrow |F| = \frac{1}{1 - j \cdot \frac{R}{wL}} = \frac{1}{1 - 0} = 1
+\end{equation*}
+
+\begin{equation*}
+    w = 0 \Rightarrow |F| = \frac{1}{1 - j \cdot \frac{R}{wL}} = \frac{1}{- \infty} = 0
+\end{equation*}
+
+\subsection{Berechnung der Bauteile}
+
+\begin{sagesilent}
+    L = R/(2*pi*f_g)
+\end{sagesilent}
+
+\begin{align*}
+    f_{g} &= \frac{R}{2 \pi L} \\
+    \Rightarrow L &= \frac{R}{2 \pi f_{g}} \\
+    L &= \frac{\var{R}}{2 \pi \var{f_g}} \\
+    L &= \SIvar{L, 3}{\henry}
+\end{align*}
+
+\subsection{Übertragungsfunktion}
+
+\begin{sagesilent}
+    bode_F1 = TransferFunction((s*L)/(R+s*L), 1, 10000, 1)
+    bode_F1_freq_mag = bode_F1.plot_data_freq_mag_bode()
+    bode_F1_freq_pha = bode_F1.plot_data_freq_pha_bode()
+
+    bode_F1_plot_mag = list_plot(
+        bode_F1_freq_mag,
+        axes_labels=["Frequenz in Hz", "Betrag in dB"],
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='red'
+    )
+
+    bode_F1_plot_pha = list_plot(
+        bode_F1_freq_pha,
+        axes_labels=["Frequenz in Hz", "Phase in $\degree$"],
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='red'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F1_plot_mag}
+    \end{subfigure}
+    \quad
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F1_plot_pha}
+    \end{subfigure}
+    \caption{Amplituden- und Phasengang des RL-Hochpasses}
+    \label{fig:F1}
+\end{figure}
+
+\begin{sagesilent}
+    bode_F1_mag_1 = bode_F1_freq_mag[0][1]
+    bode_F1_mag_10 = bode_F1_freq_mag[9][1]
+    attenuation_dB_F1 = bode_F1_mag_10 - bode_F1_mag_1
+    attenuation_dB_F1 = attenuation_dB_F1
+\end{sagesilent}
+
+Die Abschwächung im Frequenzbereich von \qty{1}{\hertz} bis \qty{10}{\hertz} beträgt $\var{attenuation_dB_F1, 0}\,\nicefrac{\unit{dB}}{\text{Dekade}}$.
+
+\begin{sagesilent}
+    bode_F1_mag_fg = bode_F1_freq_mag[f_g-1][1]
+    bode_F1_pha_fg = bode_F1_freq_pha[f_g-1][1]
+\end{sagesilent}
+
+Bei der Grenzfrequenz von \SIvar{f_g}{\hertz} ergibt sich eine Verstärkung von \SIvar{bode_F1_mag_fg, 2}{\decibel} und eine Phasenverschiebung von \SIvar{bode_F1_pha_fg, 0}{\degree}
+
+\subsection{Simulation}
+
+\begin{sagesilent}
+    bode_F1_sim_data = LTSpice.plot_data_polar("src/simulations/export/01 RL-Filter.txt")
+    bode_F1_sim_data_mag, bode_F1_sim_data_pha = bode_F1_sim_data["V(out)"]
+
+    bode_F1_sim_plot_mag = list_plot(
+        bode_F1_sim_data_mag,
+        axes_labels=["Frequenz in Hz", "Betrag in dB"],
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+
+    bode_F1_sim_plot_pha = list_plot(
+        bode_F1_sim_data_pha,
+        axes_labels=["Frequenz in Hz", "Phase in $\degree$"],
+        scale='semilogx',
+        figsize=[5.5,2],
+        plotjoined=True,
+        frame=True,
+        color='darkcyan'
+    )
+\end{sagesilent}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F1_sim_plot_mag}
+    \end{subfigure}
+    \quad
+    \begin{subfigure}{\textwidth}
+        \centering
+        \sageplot{bode_F1_sim_plot_pha}
+    \end{subfigure}
+    \caption{Amplituden- und Phasengang der Simulation des RL-Hochpasses}
+    \label{fig:F1_Sim}
+\end{figure}

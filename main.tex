@@ -4,20 +4,35 @@
 \usepackage{styles/main}
 \usepackage{styles/custom}
 
-\labtitle{}
+\htltitle{Bewertung von Filterschaltungen}
+\confidential{\textbf{Elektrotechnik}}
 
-\author{}
+\author{Rene Hampölz}
 \company{HTBLA Weiz}
-\date{}
+\date{2022}
 
 \begin{document}
 
 \maketitletoc
 \clearpage
 
-% This line can be safely removed, it is only used
-% to test the correct execution of template functions
-\input{tests/__init__.tex}
+\section{Einführung}
+
+Als messtechnische Maßnahme sollen Störfrequenzen unterhalb einer definierten Grenzfrequenz von \qty{30}{\hertz} stark gedämpft werden. Es ist bekannt, dass zwischen \qty{50}{\hertz} und \qty{10}{\kilo\hertz} die Frequenzanteile des Nutzsignals auftreten, welche möglichst ungedämpft übertragenwerden sollen. Für die beschriebene Funktion sollen verschiedene Filter ausgelegt, simuliert und analysiert werden. Die Eigenschaften der Filter sind zu vergleichen sowie deren Eignung in Bezug auf die Aufgabenstellung zu diskutieren.
+
+\begin{sagesilent}
+    f_g = 30
+    R = 100
+
+    s = var('s')
+\end{sagesilent}
+
+Angaben: $f_{g} = \SIvar{f_g}{\hertz}$, $R = \SIvar{R}{\ohm}$
+
+\input{src/01 RL-Filter.tex}
+\input{src/02 RLC-Filter.tex}
+\input{src/03 Weitere Analyse.tex}
+\input{src/04 Aktiver RLC-Filter.tex}
 
 \vfill
 
